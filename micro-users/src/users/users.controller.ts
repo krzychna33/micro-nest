@@ -18,11 +18,9 @@ import {
 } from '@nestjs/microservices';
 import { User } from './entities/user.entity';
 
-@Controller()
+@Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {
-    console.log('set');
-  }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
@@ -34,21 +32,6 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.usersService.findOne(+id);
-  // }
-  //
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-  //   return this.usersService.update(+id, updateUserDto);
-  // }
-  //
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.usersService.remove(+id);
-  // }
-
   @Patch('/:id/activate')
   activate(@Param('id') id: string) {
     return this.usersService.activate(id);
@@ -56,7 +39,6 @@ export class UsersController {
 
   @MessagePattern({ cmd: 'get-user' })
   async mFindOne(@Payload('id') id: string): Promise<User> {
-    console.log(id);
     return this.usersService.findOne(id);
   }
 }

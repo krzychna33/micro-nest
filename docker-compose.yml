@@ -1,0 +1,77 @@
+version: "3"
+
+services:
+  mongo-micro:
+    container_name: mongo-micro
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/db:/data/db
+  redis-micro:
+    container_name: redis-micro
+    image: 'redis:alpine'
+    command: redis-server
+    ports:
+      - '6379:6379'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - ./data/redis-data:/var/lib/redis
+  micro-orders:
+    container_name: micro-orders
+    image: mirco-orders:latest
+    build: micro-orders
+    command: [ "npm", "run", "start:dev" ]
+    environment:
+      REDIS_URI: redis://redis-micro:6379
+      MONGODB_URI: mongodb://mongo-micro:27017/orders
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./micro-orders:/app
+      - /app/node_modules
+    depends_on:
+      - mongo-micro
+      - redis-micro
+      - micro-products
+    links:
+      - mongo-micro
+      - redis-micro
+  micro-products:
+    container_name: micro-products
+    build: ./micro-products
+    command: [ "npm", "run", "start:dev" ]
+    environment:
+      REDIS_URI: redis://redis-micro:6379
+      MONGODB_URI: mongodb://mongo-micro:27017/products
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./micro-products:/app
+      - /app/node_modules
+    depends_on:
+      - mongo-micro
+      - redis-micro
+    links:
+      - mongo-micro
+      - redis-micro
+  micro-users:
+    container_name: micro-users
+    image: mirco-users:latest
+    build: micro-users
+    command: [ "npm", "run", "start:dev" ]
+    environment:
+      REDIS_URI: redis://redis-micro:6379
+      MONGODB_URI: mongodb://mongo-micro:27017/users
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./micro-users:/app
+      - /app/node_modules
+    depends_on:
+      - mongo-micro
+      - redis-micro
+    links:
+      - mongo-micro
+      - redis-micro

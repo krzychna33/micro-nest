@@ -1,60 +1,109 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 import {
   GetUserDtoRequest,
   GetUserDtoResponse,
 } from '../shared/services-definitions/users-service/dto/get-user.dto';
+import { GetProductDtoResponse } from '../shared/services-definitions/products-service/dto/get-product.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Order, OrderDocument } from './entities/order.entity';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @Inject('USERS_SERVICE') private readonly usersClient: ClientProxy,
     @Inject('PRODUCTS_SERVICE') private readonly productsClient: ClientProxy,
+    @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
   ) {}
 
   async create(createOrderDto: CreateOrderDto) {
-    const userObservable = this.usersClient
+    const userObservable = this.productsClient
       .send<GetUserDtoResponse, GetUserDtoRequest>(
         { cmd: 'get-user' },
         { id: createOrderDto.userId },
       )
       .pipe(timeout(1000));
+
     const user = await firstValueFrom(userObservable);
     if (!user.isActive) {
       throw new BadRequestException('User is not active');
     }
 
-    console.log(user);
+    const products = await this.getProductsByIds(createOrderDto.productsIds);
+    this.validateProducts(products);
 
-    const productsObservable = this.productsClient
-      .send<any, any>(
-        { cmd: 'get-product' },
-        { id: createOrderDto.productsIds[0] },
-      )
-      .pipe(timeout(1000));
+    const totalPrice = this.getTotalPrice(products);
 
-    const product = await firstValueFrom(productsObservable);
-    console.log(product);
+    const newOrder = new this.orderModel({
+      userId: createOrderDto.userId,
+      productsIds: createOrderDto.productsIds,
+      totalPrice,
+    });
 
-    return user;
+    await this.decreaseProductsAmounts(createOrderDto.productsIds);
+    return newOrder.save();
+  }
+
+  async getProductsByIds(
+    productsIds: string[],
+  ): Promise<GetProductDtoResponse[]> {
+    const promises = productsIds.map<Promise<GetProductDtoResponse>>(
+      (productId) => {
+        const productsObservable = this.productsClient
+          .send<GetProductDtoResponse, GetUserDtoRequest>(
+            { cmd: 'get-product' },
+            { id: productId },
+          )
+          .pipe(timeout(1000));
+
+        return firstValueFrom(productsObservable);
+      },
+    );
+
+    return Promise.all(promises);
+  }
+
+  validateProducts(products: GetProductDtoResponse[]) {
+    products.forEach((product) => {
+      if (product.amountAvailable <= 0) {
+        throw new BadRequestException(`${product.name} is not available`);
+      }
+    });
+  }
+
+  getTotalPrice(products: GetProductDtoResponse[]): number {
+    return products.reduce((total, product) => {
+      return total + product.price;
+    }, 0);
+  }
+
+  decreaseProductsAmounts(productsIds: string[]) {
+    const promises = productsIds.map<Promise<GetProductDtoResponse>>(
+      (productId) => {
+        const decreaseProductAmountObservable = this.productsClient
+          .send(
+            { cmd: 'decrease-product-amount' },
+            {
+              id: productId,
+            },
+          )
+          .pipe(timeout(1000));
+
+        return firstValueFrom(decreaseProductAmountObservable);
+      },
+    );
+
+    return Promise.all(promises);
   }
 
   findAll() {
-    return `This action returns all orders`;
+    return this.orderModel.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} order`;
-  }
-
-  update(id: number, updateOrderDto: UpdateOrderDto) {
-    return `This action updates a #${id} order`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} order`;
+  findOne(id: string) {
+    return this.orderModel.findById(id);
   }
 }

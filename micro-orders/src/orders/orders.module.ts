@@ -3,9 +3,14 @@ import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Order, OrderSchema } from './entities/order.entity';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [
+    ConfigModule,
+    MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
+  ],
   controllers: [OrdersController],
   providers: [
     OrdersService,

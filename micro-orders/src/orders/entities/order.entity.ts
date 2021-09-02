@@ -1,17 +1,22 @@
-import { Prop, Schema } from '@nestjs/mongoose';
-import { ObjectId } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, ObjectId } from 'mongoose';
+import * as mongoose from 'mongoose';
+
+export type OrderDocument = Order & Document;
 
 @Schema()
 export class Order {
-  @Prop({ required: true })
+  @Prop({ type: mongoose.Schema.Types.ObjectId, required: true })
   userId: ObjectId;
 
-  @Prop()
+  @Prop([{ type: mongoose.Schema.Types.ObjectId }])
   productsIds: ObjectId[];
 
-  @Prop()
+  @Prop({ type: Number })
   totalPrice: number;
 
   @Prop({ default: Date.now })
   createdAt: Date;
 }
+
+export const OrderSchema = SchemaFactory.createForClass(Order);

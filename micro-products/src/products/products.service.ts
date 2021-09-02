@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -24,11 +24,14 @@ export class ProductsService {
     return this.productModel.findById(id);
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} product`;
+  decreaseAmount(id: string) {
+    return this.productModel.findOneAndUpdate(
+      { _id: id },
+      {
+        $inc: {
+          amountAvailable: -1,
+        },
+      },
+    );
   }
 }

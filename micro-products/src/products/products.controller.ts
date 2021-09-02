@@ -1,7 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import {
+  Ctx,
+  EventPattern,
+  MessagePattern,
+  Payload,
+} from '@nestjs/microservices';
+import { Context } from 'vm';
 
 @Controller('products')
 export class ProductsController {
@@ -22,18 +36,14 @@ export class ProductsController {
     return this.productsService.findOne(id);
   }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
-  //   return this.productsService.update(+id, updateProductDto);
-  // }
-  //
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.productsService.remove(+id);
-  // }
-
-  @MessagePattern({cmd: 'get-product'})
+  @MessagePattern({ cmd: 'get-product' })
   mGetOne(@Payload('id') id: string) {
     return this.productsService.findOne(id);
+  }
+
+  @MessagePattern({ cmd: 'decrease-product-amount' })
+  mDecreaseProductAmount(@Payload('id') id: string, @Ctx() context: Context) {
+    console.log(context);
+    return this.productsService.decreaseAmount(id);
   }
 }
